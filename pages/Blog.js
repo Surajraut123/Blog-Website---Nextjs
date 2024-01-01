@@ -1,13 +1,21 @@
 import React, { useEffect, useState } from 'react'
 import styles from '../styles/Blog.module.css'
 import Link from 'next/link'
+import InfiniteScroll from 'react-infinite-scroll-component';
 import * as fs from 'fs';
 //step 1: Collect all files from blogdata directory
 //step 2 : Iterate through them and display them
-
 const Blog = (props) => {
+  const [count, setCount] = useState(2)
   // console.log(props)
   const [blogs, setBlogs] = useState(props.allBlogs);
+  const fetchMoreData = async () => {
+    let d = await fetch(`http://localhost:3000/api/blogs/?count=${count+2}`)
+    let data = await d.json();
+    setCount(count+2)
+    setBlogs(data)
+  };
+
   // const [blogs, setBlogs] = useState([]);
   
   //For Server Side Rendering we will use ServerSdeProps function to show data in html not useEffect here
@@ -23,6 +31,19 @@ const Blog = (props) => {
     <div className={styles.container}>
         <main className={styles.main}>
 
+        <InfiniteScroll
+          dataLength={blogs.length} //This is important field to render the next data
+          next={fetchMoreData}
+          hasMore={props.allCount !== blogs.length}
+          loader={<h4>Loading...</h4>}
+          endMessage={
+            <p style={{ textAlign: 'center' }}>
+              <b>Yay! You have seen it all</b>
+            </p>
+          }
+          
+        >
+          
         {blogs.map((blogitem)=>{
           return  <div className={styles.blogItem} key={blogitem.title}>
                     <Link href={`/blogpost/${blogitem.slug}`}>
@@ -32,6 +53,7 @@ const Blog = (props) => {
                     <p>Author : {blogitem.author}</p>
                   </div>
         })}
+        </InfiniteScroll>
 
     </main>
   </div>
@@ -51,9 +73,10 @@ const Blog = (props) => {
 //Static Side Rendering
 export async function getStaticProps(context) {
   let data = await fs.promises.readdir("blogdata");
+  let allCount = data.length;
   let myfile;
   let allBlogs = []
-  for (let index = 0; index < data.length; index++) {
+  for (let index = 0; index < 2; index++) {
     console.log(data[index])
     const item = data[index]
     myfile = await fs.promises.readFile(('blogdata/' + item), 'utf-8')
@@ -61,7 +84,7 @@ export async function getStaticProps(context) {
   }
 
   return{
-    props: {allBlogs}
+    props: {allBlogs, allCount}
   }
 }
 
